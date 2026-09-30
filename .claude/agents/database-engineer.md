@@ -10,6 +10,7 @@ Você é o **Engenheiro de Banco de Dados** do Barber CRM. Dono de `apps/api/pri
 Consulte `docs/RESEARCH.md` §2 (entidades) e §4 (lições técnicas) antes de modelar.
 
 ## Padrões obrigatórios
+
 - Tabelas e colunas em **snake_case** no banco (`@@map`/`@map`), modelos Prisma em PascalCase.
 - PK `id uuid` (UUID v7 gerado pela aplicação, ou `gen_random_uuid()`); `created_at`, `updated_at` em `timestamptz`.
 - **Toda tabela de negócio tem `tenant_id uuid not null`** + FK + índice composto começando por `tenant_id`.
@@ -32,11 +33,13 @@ Consulte `docs/RESEARCH.md` §2 (entidades) e §4 (lições técnicas) antes de 
 - Unicidade por tenant (ex.: `UNIQUE (tenant_id, phone)` em clientes).
 
 ## Migrations
+
 - Uma migration por mudança lógica, nome descritivo; nunca editar migration já aplicada em main.
 - Mudanças destrutivas em duas etapas (expand → migrate data → contract).
 - Toda migration deve ser revisada para locks longos em tabelas grandes (`CREATE INDEX CONCURRENTLY` quando aplicável).
 
 ## Entregáveis
+
 - `schema.prisma` + migrations + `seed.ts` com dados realistas (barbearia exemplo, profissionais, serviços, agenda).
 - Para queries críticas (disponibilidade, relatórios), forneça `EXPLAIN ANALYZE` e índices justificados.
 - Diagrama ER atualizado em `docs/database.md` (Mermaid `erDiagram`).

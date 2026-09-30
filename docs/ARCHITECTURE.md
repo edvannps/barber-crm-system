@@ -5,27 +5,27 @@
 
 ## 1. Stack
 
-| Camada | Escolha | Motivo |
-|---|---|---|
-| Linguagem | **TypeScript** (strict) em todo o repo | Tipos compartilhados front ↔ back |
-| Monorepo | **pnpm workspaces + Turborepo** | Cache de build/test, pacotes compartilhados |
-| Front-end | **React 19 + Vite** | SPA rápida; painel é área logada (SEO irrelevante) |
-| Estilo / UI | **Tailwind CSS v4 + shadcn/ui** (Radix) | Componentes acessíveis que ficam no nosso código |
-| Estado servidor | **TanStack Query** | Cache, invalidação, otimismo na agenda |
-| Roteamento | **TanStack Router** (tipado) | Rotas e search params tipados |
-| Formulários | **React Hook Form + Zod** | Mesmos schemas Zod do back-end |
-| Back-end | **NestJS 11 (adapter Fastify)** | Módulos por domínio, DI, guards — estrutura clara para vários agentes |
-| ORM | **Prisma** | Migrations, DX, tipagem; SQL cru para constraints avançadas |
-| Banco | **PostgreSQL 17** | `tstzrange` + exclusion constraints, RLS, JSONB |
-| Filas / jobs | **BullMQ + Redis** | Lembretes WhatsApp/SMS, e-mails, rotinas agendadas |
-| Contratos | **Zod** em `packages/shared` + OpenAPI (Swagger) | Fonte única de validação |
-| Auth | JWT curto + refresh token rotativo (cookie httpOnly), senhas **argon2** | _ADR aberta_: avaliar Better Auth |
-| Testes | **Vitest**, Supertest, **Testcontainers** (Postgres real), **Playwright** | Pirâmide unit → integração → E2E |
-| Qualidade | ESLint (flat config) + Prettier, Husky + lint-staged, commitlint | Padrão de código e commits |
-| Infra local | **Docker Compose** (postgres, redis, mailpit) | Ambiente reprodutível |
-| CI/CD | **GitHub Actions** | Lint, typecheck, test, build, deploy |
-| Observabilidade | Pino (logs JSON), Sentry, OpenTelemetry (fase 2) | |
-| Deploy | _ADR aberta_: Railway/Render/Fly.io no início → AWS (ECS + RDS) ao escalar | |
+| Camada          | Escolha                                                                    | Motivo                                                                |
+| --------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Linguagem       | **TypeScript** (strict) em todo o repo                                     | Tipos compartilhados front ↔ back                                     |
+| Monorepo        | **pnpm workspaces + Turborepo**                                            | Cache de build/test, pacotes compartilhados                           |
+| Front-end       | **React 19 + Vite**                                                        | SPA rápida; painel é área logada (SEO irrelevante)                    |
+| Estilo / UI     | **Tailwind CSS v4 + shadcn/ui** (Radix)                                    | Componentes acessíveis que ficam no nosso código                      |
+| Estado servidor | **TanStack Query**                                                         | Cache, invalidação, otimismo na agenda                                |
+| Roteamento      | **TanStack Router** (tipado)                                               | Rotas e search params tipados                                         |
+| Formulários     | **React Hook Form + Zod**                                                  | Mesmos schemas Zod do back-end                                        |
+| Back-end        | **NestJS 12 (adapter Fastify)**                                            | Módulos por domínio, DI, guards — estrutura clara para vários agentes |
+| ORM             | **Prisma**                                                                 | Migrations, DX, tipagem; SQL cru para constraints avançadas           |
+| Banco           | **PostgreSQL 17**                                                          | `tstzrange` + exclusion constraints, RLS, JSONB                       |
+| Filas / jobs    | **BullMQ + Redis**                                                         | Lembretes WhatsApp/SMS, e-mails, rotinas agendadas                    |
+| Contratos       | **Zod** em `packages/shared` + OpenAPI (Swagger)                           | Fonte única de validação                                              |
+| Auth            | JWT curto + refresh token rotativo (cookie httpOnly), senhas **argon2**    | _ADR aberta_: avaliar Better Auth                                     |
+| Testes          | **Vitest**, Supertest, **Testcontainers** (Postgres real), **Playwright**  | Pirâmide unit → integração → E2E                                      |
+| Qualidade       | ESLint (flat config) + Prettier, Husky + lint-staged, commitlint           | Padrão de código e commits                                            |
+| Infra local     | **Docker Compose** (postgres, redis, mailpit)                              | Ambiente reprodutível                                                 |
+| CI/CD           | **GitHub Actions**                                                         | Lint, typecheck, test, build, deploy                                  |
+| Observabilidade | Pino (logs JSON), Sentry, OpenTelemetry (fase 2)                           |                                                                       |
+| Deploy          | _ADR aberta_: Railway/Render/Fly.io no início → AWS (ECS + RDS) ao escalar |                                                                       |
 
 **Sugestões futuras:** app mobile do cliente com React Native/Expo reaproveitando `packages/shared`;
 página pública de agendamento com Next.js/Astro se SEO por barbearia virar requisito.
@@ -80,8 +80,8 @@ barber-crm-system/
    (Agenda, Clientes, Financeiro...). Comunicação entre módulos via services
    exportados ou eventos internos — nunca acessando tabelas de outro módulo diretamente.
 2. **Multi-tenancy**: schema compartilhado com coluna `tenant_id` em toda tabela de negócio
-   + **Row-Level Security** do Postgres como segunda barreira. O `tenant_id` vem do token,
-   é setado por request (`SET LOCAL app.tenant_id`) e nunca aceito do body.
+   - **Row-Level Security** do Postgres como segunda barreira. O `tenant_id` vem do token,
+     é setado por request (`SET LOCAL app.tenant_id`) e nunca aceito do body.
 3. **Tempo**: tudo em `timestamptz` (UTC) no banco; cada unidade tem `timezone`
    (padrão `America/Sao_Paulo`); conversão só nas bordas (API/UI).
 4. **Agenda sem conflito garantida pelo banco**: `EXCLUDE USING gist (professional_id WITH =, period WITH &&)`
