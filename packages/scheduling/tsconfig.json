@@ -1,0 +1,3 @@
+{
+  "extends": "@barber/config/tsconfig.lib.json"
+}

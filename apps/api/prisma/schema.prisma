@@ -1,0 +1,13 @@
+// Dono: agente database-engineer. Convenções em .claude/agents/database-engineer.md
+// Constraints avançadas (EXCLUDE, RLS) vão em migrations SQL manuais.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

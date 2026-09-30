@@ -6,19 +6,19 @@ por **artefatos no repositório** (planos, schemas Zod, migrations, ADRs), não 
 
 ## Mapa de responsabilidades
 
-| Área | Dono | Revisores |
-|---|---|---|
-| `docs/adr/`, planos de feature | `tech-lead` | — |
-| `docs/product/` | `product-analyst` | `tech-lead` |
-| `docs/design-system.md`, tema Tailwind | `ui-ux-designer` | `frontend-engineer` |
-| `packages/shared` (contratos Zod) | `backend-engineer` | `frontend-engineer`, `tech-lead` |
-| `apps/api/prisma/` | `database-engineer` | `backend-engineer` |
-| `apps/api/src/modules/*` | `backend-engineer` | `code-reviewer` |
-| `apps/api/src/modules/{notifications,payments,integrations}` | `integrations-engineer` | `security-reviewer` |
-| `apps/web/` | `frontend-engineer` | `code-reviewer` |
-| `apps/*/test`, `e2e/` | `qa-engineer` | — |
-| `infra/`, Dockerfiles | `devops-engineer` | `security-reviewer` |
-| `.github/` | `git-cicd-engineer` | `devops-engineer` |
+| Área                                                         | Dono                    | Revisores                        |
+| ------------------------------------------------------------ | ----------------------- | -------------------------------- |
+| `docs/adr/`, planos de feature                               | `tech-lead`             | —                                |
+| `docs/product/`                                              | `product-analyst`       | `tech-lead`                      |
+| `docs/design-system.md`, tema Tailwind                       | `ui-ux-designer`        | `frontend-engineer`              |
+| `packages/shared` (contratos Zod)                            | `backend-engineer`      | `frontend-engineer`, `tech-lead` |
+| `apps/api/prisma/`                                           | `database-engineer`     | `backend-engineer`               |
+| `apps/api/src/modules/*`                                     | `backend-engineer`      | `code-reviewer`                  |
+| `apps/api/src/modules/{notifications,payments,integrations}` | `integrations-engineer` | `security-reviewer`              |
+| `apps/web/`                                                  | `frontend-engineer`     | `code-reviewer`                  |
+| `apps/*/test`, `e2e/`                                        | `qa-engineer`           | —                                |
+| `infra/`, Dockerfiles                                        | `devops-engineer`       | `security-reviewer`              |
+| `.github/`                                                   | `git-cicd-engineer`     | `devops-engineer`                |
 
 ## Ciclo de uma feature
 
@@ -51,6 +51,7 @@ flowchart LR
 ## Como acionar
 
 No Claude Code, basta pedir em linguagem natural — o agente é escolhido pela `description`:
+
 > "Use o tech-lead para planejar a feature de agendamento online."
 > "Peça ao database-engineer para modelar profissionais, serviços e agendamentos."
 
@@ -58,6 +59,7 @@ Ou explicitamente com `@agente` / `/agents` para listar e editar.
 Para trabalho paralelo que mexe nos mesmos arquivos, use isolamento por **git worktree**.
 
 ## Regras de colaboração
+
 - Nenhum agente altera área de outro dono sem registrar no plano da feature.
 - Mudou contrato (`packages/shared`)? Avise no plano — front e back dependem dele.
 - Ao terminar, cada agente reporta: o que fez, arquivos alterados, como verificar, pendências.
