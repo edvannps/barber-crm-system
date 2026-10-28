@@ -16,3 +16,7 @@ test-results/
 
 # Prisma client gerado
 apps/api/src/generated/
+
+# Memória local da mentoria de engenharia — não é artefato de produto/arquitetura do time
+# (decisões técnicas reais vão para docs/adr/, não aqui). Ver docs/adr/0003-cqrs-avaliado-e-adiado.md.
+PROGRESSO.md
