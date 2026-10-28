@@ -1,5 +1,6 @@
 // Dono: agente database-engineer. Convenções em .claude/agents/database-engineer.md
-// Constraints avançadas (EXCLUDE, RLS) vão em migrations SQL manuais.
+// Constraints avançadas (EXCLUDE, RLS, CHECK, índices funcionais/parciais) vão em migrations SQL manuais.
+// Estratégia de RLS e diagrama ER: docs/database.md.
 
 generator client {
   provider            = "prisma-client"
@@ -10,4 +11,189 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identidade global (RLS por app.user_id — ver migration init_auth_tenants_memberships)
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  name         String   @db.VarChar(120)
+  // Sempre minúsculo (CHECK email = lower(email)). Unicidade case-insensitive garantida também pelo
+  // índice funcional users_email_lower_idx (migration SQL manual). O @unique simples é mantido para o
+  // Prisma poder usar findUnique({ where: { email } }) com índice.
+  email        String   @unique @db.VarChar(254)
+  passwordHash String   @map("password_hash") // argon2id (PHC string)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships         Membership[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Tenant (raiz do multi-tenant) e escopo por tenant (RLS por app.tenant_id)
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  units       Unit[]
+  memberships Membership[]
+  invitations Invitation[]
+  sessions    Session[]
+
+  @@map("tenants")
+}
+
+model Unit {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  name          String   @db.VarChar(120)
+  timezone      String   @default("America/Sao_Paulo") @db.VarChar(64) // IANA, validado no backend
+  street        String?  @db.VarChar(200)
+  number        String?  @db.VarChar(20)
+  complement    String?  @db.VarChar(100)
+  neighborhood  String?  @db.VarChar(100)
+  city          String?  @db.VarChar(100)
+  state         String?  @db.Char(2)
+  zipCode       String?  @map("zip_code") @db.VarChar(9)
+  cnpj          String?  @db.Char(14)
+  // Array de 7 posições {weekday, closed, opensAt?, closesAt?} (contrato units.ts em packages/shared).
+  // CHECK de forma (array de 7) na migration manual.
+  businessHours Json     @map("business_hours") @db.JsonB
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  membershipUnits MembershipUnit[]
+  invitationUnits InvitationUnit[]
+
+  // Alvo das FKs compostas (tenant_id, unit_id) — garante que uma unidade só é vinculada a
+  // membership/convite do MESMO tenant. Também serve como índice começando por tenant_id.
+  @@unique([tenantId, id])
+  @@map("units")
+}
+
+model Membership {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @db.VarChar(20) // MEMBERSHIP_ROLES — String + CHECK (ADR 0002 / plano auth §3), não enum nativo
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  user        User             @relation(fields: [userId], references: [id])
+  units       MembershipUnit[]
+  invitations Invitation[]     @relation("InvitationInvitedBy")
+  sessions    Session[]
+
+  @@unique([tenantId, userId])
+  @@unique([tenantId, id]) // alvo das FKs compostas
+  // Alvo da FK composta de sessions (tenant_id, membership_id, user_id): o banco impede vincular uma sessão a
+  // uma membership que não seja do MESMO user_id dono da sessão (achado Alta 1 do security-reviewer).
+  @@unique([tenantId, id, userId])
+  @@index([userId]) // login: memberships do usuário em todos os tenants
+  @@map("memberships")
+}
+
+// tenant_id duplicado (em vez de RLS via join) para: (1) policy de RLS simples e indexável;
+// (2) FKs compostas (tenant_id, membership_id) e (tenant_id, unit_id) impedirem, no banco,
+// vincular membership de um tenant a unidade de outro.
+model MembershipUnit {
+  tenantId     String @map("tenant_id") @db.Uuid
+  membershipId String @map("membership_id") @db.Uuid
+  unitId       String @map("unit_id") @db.Uuid
+
+  membership Membership @relation(fields: [tenantId, membershipId], references: [tenantId, id], onDelete: Cascade)
+  unit       Unit       @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Cascade)
+
+  @@id([membershipId, unitId])
+  @@index([tenantId, unitId]) // "membros da unidade X" + FK composta para units
+  @@map("membership_units")
+}
+
+model Invitation {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  email       String   @db.VarChar(254) // sempre minúsculo (CHECK)
+  role        String   @db.VarChar(20) // MEMBERSHIP_ROLES (CHECK)
+  tokenHash   String   @unique @map("token_hash") @db.Char(64) // sha-256 hex do token enviado por e-mail
+  status      String   @default("PENDING") @db.VarChar(20) // INVITATION_STATUSES (CHECK)
+  invitedById String   @map("invited_by_id") @db.Uuid // membership_id de quem convidou (mesmo tenant)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  invitedBy Membership       @relation("InvitationInvitedBy", fields: [tenantId, invitedById], references: [tenantId, id])
+  units     InvitationUnit[]
+
+  @@unique([tenantId, id]) // alvo da FK composta de invitation_units
+  @@index([tenantId, email])
+  @@index([status, expiresAt]) // housekeeping de convites expirados
+  // + índice único parcial (tenant_id, email) WHERE status = 'PENDING' na migration manual
+  @@map("invitations")
+}
+
+model InvitationUnit {
+  tenantId     String @map("tenant_id") @db.Uuid
+  invitationId String @map("invitation_id") @db.Uuid
+  unitId       String @map("unit_id") @db.Uuid
+
+  invitation Invitation @relation(fields: [tenantId, invitationId], references: [tenantId, id], onDelete: Cascade)
+  unit       Unit       @relation(fields: [tenantId, unitId], references: [tenantId, id], onDelete: Cascade)
+
+  @@id([invitationId, unitId])
+  @@index([tenantId, unitId])
+  @@map("invitation_units")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64) // sha-256 hex
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt]) // job de limpeza
+  @@map("password_reset_tokens")
+}
+
+model Session {
+  id               String    @id @default(uuid(7)) @db.Uuid // = "sid" no JWT
+  userId           String    @map("user_id") @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  membershipId     String    @map("membership_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.Char(64) // sha-256 hex do refresh token atual (rotativo)
+  userAgent        String?   @map("user_agent") @db.VarChar(255)
+  ipTruncated      String?   @map("ip_truncated") @db.VarChar(45) // último octeto/hexteto zerado
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  // FK composta (tenant_id, membership_id, user_id) → memberships (tenant_id, id, user_id): a membership da
+  // sessão é obrigatoriamente do mesmo tenant E do mesmo usuário da sessão.
+  membership Membership @relation(fields: [tenantId, membershipId, userId], references: [tenantId, id, userId], onDelete: Cascade)
+
+  @@index([userId, tenantId])
+  @@index([tenantId, membershipId]) // revogar sessões ao remover/alterar membro
+  @@index([expiresAt]) // job de limpeza
+  @@map("sessions")
 }

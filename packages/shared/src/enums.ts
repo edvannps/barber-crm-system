@@ -11,3 +11,6 @@ export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 
 export const MEMBERSHIP_ROLES = ['OWNER', 'MANAGER', 'RECEPTION', 'PROFESSIONAL'] as const;
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
+
+export const INVITATION_STATUSES = ['PENDING', 'ACCEPTED', 'EXPIRED', 'CANCELLED'] as const;
+export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
