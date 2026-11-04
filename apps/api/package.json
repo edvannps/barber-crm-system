@@ -18,9 +18,9 @@
   "dependencies": {
     "@barber/scheduling": "workspace:*",
     "@barber/shared": "workspace:*",
-    "@nestjs/common": "^12.2.0",
-    "@nestjs/core": "^12.2.0",
-    "@nestjs/platform-fastify": "^12.2.0",
+    "@nestjs/common": "^12.3.2",
+    "@nestjs/core": "^12.3.2",
+    "@nestjs/platform-fastify": "^12.3.2",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "reflect-metadata": "^0.2.2",
@@ -28,9 +28,9 @@
   },
   "devDependencies": {
     "@barber/config": "workspace:*",
-    "@nestjs/testing": "^12.2.0",
-    "@swc/core": "^1.16.20",
-    "@types/node": "^26.6.5",
+    "@nestjs/testing": "^12.3.2",
+    "@swc/core": "^1.16.21",
+    "@types/node": "^26.6.6",
     "prisma": "7.10.1",
     "tsc-watch": "^7.2.1",
     "unplugin-swc": "^2.0.0"
